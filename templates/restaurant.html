@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} — Pauco Comptable{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('dashboard') }}" class="back-link">&larr; Retour au dashboard</a>
+    <h2>{{ name }}</h2>
+    <a href="{{ url_for('export_csv', resto_id=resto_id) }}" class="btn btn-sm">Exporter CSV</a>
+</div>
+
+<!-- KPI row -->
+<div class="kpi-row">
+    <div class="kpi-card">
+        <span class="kpi-label">CA 12 mois</span>
+        <span class="kpi-value">{{ "%.0f"|format(total_ca) }} €</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Dépenses 12 mois</span>
+        <span class="kpi-value">{{ "%.0f"|format(total_depenses) }} €</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Ratio food cost</span>
+        <span class="kpi-value">{{ "%.1f"|format(ratio_food) }}%</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Ratio personnel</span>
+        <span class="kpi-value">{{ "%.1f"|format(ratio_personnel) }}%</span>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+    <div class="chart-container">
+        <h3>CA mensuel (12 mois)</h3>
+        <canvas id="caChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <h3>Dépenses par catégorie</h3>
+        <canvas id="depensesChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const caLabels = {{ monthly_ca.keys()|list|tojson }};
+    const caData = {{ monthly_ca.values()|list|tojson }};
+
+    new Chart(document.getElementById('caChart'), {
+        type: 'bar',
+        data: {
+            labels: caLabels,
+            datasets: [{
+                label: 'CA (€)',
+                data: caData,
+                backgroundColor: '#0F1F14',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('fr-FR') + ' €' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    const catLabels = {{ depenses_by_cat.keys()|list|tojson }};
+    const catData = {{ depenses_by_cat.values()|list|tojson }};
+    const colors = ['#0F1F14', '#2D5A3D', '#4A8C6B', '#6BBF8A', '#A8D8B9', '#D4ECE0', '#8B6914', '#C49A2A', '#E6C35C', '#F0D88A'];
+
+    new Chart(document.getElementById('depensesChart'), {
+        type: 'doughnut',
+        data: {
+            labels: catLabels,
+            datasets: [{
+                data: catData,
+                backgroundColor: colors.slice(0, catLabels.length),
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+            }
+        }
+    });
+</script>
+{% endblock %}

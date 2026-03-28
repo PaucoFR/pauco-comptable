@@ -1,0 +1,322 @@
+/* ── Variables & Reset ─────────────────────────────────── */
+:root {
+    --bg: #F7F4EF;
+    --fg: #0F1F14;
+    --fg-muted: #5A6B5E;
+    --green: #0F1F14;
+    --green-light: #2D5A3D;
+    --border: #D6D1C9;
+    --card-bg: #FFFFFF;
+    --danger: #C0392B;
+    --success: #27AE60;
+    --radius: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* ── Navbar ───────────────────────────────────────────── */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 2rem;
+    background: var(--green);
+    color: #fff;
+}
+
+.nav-brand a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.nav-sub {
+    font-weight: 400;
+    opacity: 0.7;
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-user {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+/* ── Container ────────────────────────────────────────── */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.btn:hover {
+    background: var(--bg);
+    border-color: var(--fg);
+}
+
+.btn-primary {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+}
+
+.btn-primary:hover {
+    background: var(--green-light);
+    border-color: var(--green-light);
+}
+
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+.btn-full { width: 100%; text-align: center; }
+
+/* ── Flash messages ───────────────────────────────────── */
+.flash-messages { margin-bottom: 1.5rem; }
+
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.flash-error { background: #FDECEA; color: var(--danger); border: 1px solid #F5C6CB; }
+.flash-success { background: #E8F5E9; color: var(--success); border: 1px solid #C8E6C9; }
+
+/* ── Login ────────────────────────────────────────────── */
+.login-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: -0.03em;
+}
+
+.login-subtitle {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.35rem;
+    color: var(--fg);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    background: var(--bg);
+    color: var(--fg);
+    transition: border-color 0.15s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--green);
+}
+
+/* ── Page header ──────────────────────────────────────── */
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.page-header h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    flex: 1;
+}
+
+.back-link {
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.back-link:hover { color: var(--fg); }
+
+.text-muted { color: var(--fg-muted); font-size: 0.9rem; }
+
+/* ── Cards grid ───────────────────────────────────────── */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+}
+
+.restaurant-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: var(--fg);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.restaurant-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border-color: var(--green);
+}
+
+.card-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.card-metrics {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metric-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+.text-danger { color: var(--danger); }
+.text-success { color: var(--success); }
+
+/* ── KPI row ──────────────────────────────────────────── */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-label {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.kpi-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0.35rem;
+}
+
+/* ── Charts ───────────────────────────────────────────── */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.chart-container {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+.chart-container h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* ── Empty state ──────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--fg-muted);
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 768px) {
+    .navbar { padding: 0.75rem 1rem; }
+    .container { padding: 1.25rem 1rem; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .card-metrics { flex-direction: column; gap: 0.5rem; }
+}

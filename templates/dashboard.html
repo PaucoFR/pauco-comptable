@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Pauco Comptable{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Vos restaurants</h2>
+    <p class="text-muted">Vue d'ensemble du mois en cours</p>
+</div>
+
+{% if cards %}
+<div class="card-grid">
+    {% for card in cards %}
+    <a href="{{ url_for('restaurant_view', resto_id=card.id) }}" class="restaurant-card">
+        <h3 class="card-name">{{ card.nom }}</h3>
+        <div class="card-metrics">
+            <div class="metric">
+                <span class="metric-label">CA du mois</span>
+                <span class="metric-value">{{ "%.0f"|format(card.ca) }} €</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Résultat net</span>
+                <span class="metric-value {% if card.resultat < 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ "%.0f"|format(card.resultat) }} €
+                </span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Dépenses</span>
+                <span class="metric-value">{{ card.nb_depenses }}</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>Aucun restaurant associé à votre compte.</p>
+</div>
+{% endif %}
+{% endblock %}
