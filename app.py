@@ -1,5 +1,7 @@
 import os
 import re
+import sys
+import logging
 import functools
 import csv
 import io
@@ -16,6 +18,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── Logging ─────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    stream=sys.stdout,
+)
+logger = logging.getLogger("pauco-comptable")
+
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -23,13 +33,37 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 
-# Airtable config
+# Airtable config — try all possible env var names
 AIRTABLE_TOKEN = os.environ.get("AIRTABLE_PAT") or os.environ.get("AIRTABLE_API_KEY") or os.environ.get("AIRTABLE_TOKEN", "")
 BASE_ID = "app37TquPqedRoJ96"
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1606156456")
 
+# Log which env var was found
+if os.environ.get("AIRTABLE_PAT"):
+    logger.info("Airtable: using AIRTABLE_PAT (%s...)", AIRTABLE_TOKEN[:10])
+elif os.environ.get("AIRTABLE_API_KEY"):
+    logger.info("Airtable: using AIRTABLE_API_KEY (%s...)", AIRTABLE_TOKEN[:10])
+elif os.environ.get("AIRTABLE_TOKEN"):
+    logger.info("Airtable: using AIRTABLE_TOKEN (%s...)", AIRTABLE_TOKEN[:10])
+else:
+    logger.error("AUCUNE VARIABLE AIRTABLE TROUVEE — définir AIRTABLE_PAT dans Railway")
+
 api = Api(AIRTABLE_TOKEN)
+
+# Startup connectivity test
+def test_airtable_connection():
+    if not AIRTABLE_TOKEN:
+        logger.error("Airtable: token vide — impossible de se connecter")
+        return
+    try:
+        table = api.table(BASE_ID, "Comptables")
+        table.all(max_records=1)
+        logger.info("Airtable: connexion OK — base %s table Comptables accessible", BASE_ID)
+    except Exception as e:
+        logger.error("Airtable: ECHEC connexion — %s", e)
+
+test_airtable_connection()
 
 
 def get_table(table_name):
@@ -71,7 +105,8 @@ def get_restaurants_for_comptable(comptable_email):
         try:
             rec = restaurants_table.get(rid)
             restaurants.append(rec)
-        except Exception:
+        except Exception as e:
+            logger.warning("Restaurant %s inaccessible: %s", rid, e)
             continue
     return restaurants
 
@@ -84,7 +119,8 @@ def get_depenses(restaurant_id, months=1):
     formula = f"AND({{Restaurant}} = '{safe_id}', {{Date}} >= '{date_limit}')"
     try:
         return table.all(formula=formula)
-    except Exception:
+    except Exception as e:
+        logger.error("Dépenses — erreur Airtable: %s", e)
         return []
 
 
@@ -96,7 +132,8 @@ def get_revenus(restaurant_id, months=1):
     formula = f"AND({{Restaurant}} = '{safe_id}', {{Date}} >= '{date_limit}')"
     try:
         return table.all(formula=formula)
-    except Exception:
+    except Exception as e:
+        logger.error("Revenus — erreur Airtable: %s", e)
         return []
 
 
@@ -156,6 +193,18 @@ def health():
     return "OK", 200
 
 
+@app.route("/health/airtable")
+def health_airtable():
+    if not AIRTABLE_TOKEN:
+        return "FAIL: aucune variable Airtable configurée (AIRTABLE_PAT / AIRTABLE_API_KEY / AIRTABLE_TOKEN)", 500
+    try:
+        table = api.table(BASE_ID, "Comptables")
+        records = table.all(max_records=1)
+        return f"OK: Airtable connecté — base {BASE_ID} — {len(records)} record(s) test", 200
+    except Exception as e:
+        return f"FAIL: {e}", 500
+
+
 @app.route("/inscription", methods=["GET", "POST"])
 def inscription():
     if request.method == "POST":
@@ -183,6 +232,10 @@ def inscription():
             flash("Adresse email invalide.", "error")
             return render_template("inscription.html")
 
+        if not AIRTABLE_TOKEN:
+            flash("Configuration serveur incomplète (variable AIRTABLE_PAT manquante). Contactez l'administrateur.", "error")
+            return render_template("inscription.html")
+
         table = get_table("Comptables")
         try:
             safe_email = sanitize_for_formula(email)
@@ -190,8 +243,9 @@ def inscription():
             if existing:
                 flash("Un compte avec cet email existe déjà.", "error")
                 return render_template("inscription.html")
-        except Exception:
-            flash("Erreur de connexion à la base de données.", "error")
+        except Exception as e:
+            logger.error("Inscription — erreur lecture Comptables: %s", e)
+            flash("Erreur de connexion à la base de données. Réessayez dans quelques minutes.", "error")
             return render_template("inscription.html")
 
         try:
@@ -205,8 +259,9 @@ def inscription():
                 "Statut": "en_attente",
                 "Created_at": datetime.now().isoformat(),
             })
-        except Exception:
-            flash("Erreur lors de la création du compte.", "error")
+        except Exception as e:
+            logger.error("Inscription — erreur création Comptables: %s", e)
+            flash("Erreur lors de la création du compte. Réessayez dans quelques minutes.", "error")
             return render_template("inscription.html")
 
         send_telegram(f"Nouveau comptable inscrit : {prenom} {nom} — {cabinet} — {email}")
@@ -234,12 +289,17 @@ def login():
             flash("Veuillez remplir tous les champs.", "error")
             return render_template("login.html")
 
+        if not AIRTABLE_TOKEN:
+            flash("Configuration serveur incomplète (variable AIRTABLE_PAT manquante). Contactez l'administrateur.", "error")
+            return render_template("login.html")
+
         table = get_table("Comptables")
         try:
             safe_email = sanitize_for_formula(email)
             records = table.all(formula=f"{{Email}} = '{safe_email}'")
-        except Exception:
-            flash("Erreur de connexion à la base de données.", "error")
+        except Exception as e:
+            logger.error("Login — erreur Airtable: %s", e)
+            flash("Erreur de connexion à la base de données. Réessayez dans quelques minutes.", "error")
             return render_template("login.html")
 
         if not records:
