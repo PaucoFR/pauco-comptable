@@ -24,7 +24,7 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 
 # Airtable config
-AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
+AIRTABLE_TOKEN = os.environ.get("AIRTABLE_PAT") or os.environ.get("AIRTABLE_API_KEY") or os.environ.get("AIRTABLE_TOKEN", "")
 BASE_ID = "app37TquPqedRoJ96"
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1606156456")
