@@ -109,6 +109,11 @@ def compute_depenses_by_category(depenses_records):
 
 
 # ── Routes ──────────────────────────────────────────────────────
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
 @app.route("/")
 def index():
     if "user_email" in session:
