@@ -148,6 +148,28 @@ body {
     margin-top: 0.25rem;
 }
 
+.form-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.form-half { flex: 1; }
+
+.login-footer {
+    text-align: center;
+    margin-top: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+}
+
+.login-footer a {
+    color: var(--green);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-footer a:hover { text-decoration: underline; }
+
 .form-group {
     margin-bottom: 1.25rem;
 }

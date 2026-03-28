@@ -8,8 +8,9 @@ from flask import (
     Flask, render_template, request, redirect, url_for,
     session, flash, Response
 )
+import requests as http_requests
 from pyairtable import Api
-from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,6 +21,8 @@ app.secret_key = os.environ.get("SECRET_KEY", "pauco-comptable-secret-key-change
 # Airtable config
 AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
 BASE_ID = "app37TquPqedRoJ96"
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1606156456")
 
 api = Api(AIRTABLE_TOKEN)
 
@@ -108,10 +111,76 @@ def compute_depenses_by_category(depenses_records):
     return dict(sorted(categories.items()))
 
 
+# ── Telegram ────────────────────────────────────────────────────
+def send_telegram(message):
+    if not TELEGRAM_BOT_TOKEN:
+        return
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    try:
+        http_requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": message}, timeout=5)
+    except Exception:
+        pass
+
+
 # ── Routes ──────────────────────────────────────────────────────
 @app.route("/health")
 def health():
     return "OK", 200
+
+
+@app.route("/inscription", methods=["GET", "POST"])
+def inscription():
+    if request.method == "POST":
+        prenom = request.form.get("prenom", "").strip()
+        nom = request.form.get("nom", "").strip()
+        cabinet = request.form.get("cabinet", "").strip()
+        email = request.form.get("email", "").strip()
+        telephone = request.form.get("telephone", "").strip()
+        password = request.form.get("password", "").strip()
+        password_confirm = request.form.get("password_confirm", "").strip()
+
+        if not all([prenom, nom, cabinet, email, password, password_confirm]):
+            flash("Veuillez remplir tous les champs obligatoires.", "error")
+            return render_template("inscription.html")
+
+        if password != password_confirm:
+            flash("Les mots de passe ne correspondent pas.", "error")
+            return render_template("inscription.html")
+
+        # Check if email already exists
+        table = get_table("Comptables")
+        try:
+            existing = table.all(formula=f"{{Email}} = '{email}'")
+            if existing:
+                flash("Un compte avec cet email existe déjà.", "error")
+                return render_template("inscription.html")
+        except Exception:
+            flash("Erreur de connexion à la base de données.", "error")
+            return render_template("inscription.html")
+
+        # Create record in Airtable
+        try:
+            table.create({
+                "Prenom": prenom,
+                "Nom": nom,
+                "Cabinet": cabinet,
+                "Email": email,
+                "Telephone": telephone,
+                "Password_hash": generate_password_hash(password),
+                "Statut": "en_attente",
+                "Created_at": datetime.now().isoformat(),
+            })
+        except Exception:
+            flash("Erreur lors de la création du compte.", "error")
+            return render_template("inscription.html")
+
+        # Notify Telegram
+        send_telegram(f"Nouveau comptable inscrit : {prenom} {nom} — {cabinet} — {email}")
+
+        flash("Votre demande est en cours de validation. Vous recevrez un email sous 24h.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("inscription.html")
 
 
 @app.route("/")
@@ -147,6 +216,11 @@ def login():
 
         if not stored_hash or not check_password_hash(stored_hash, password):
             flash("Email ou mot de passe incorrect.", "error")
+            return render_template("login.html")
+
+        statut = comptable.get("Statut", "")
+        if statut != "actif":
+            flash("Votre compte est en attente de validation.", "error")
             return render_template("login.html")
 
         session["user_email"] = email

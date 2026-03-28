@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Inscription — Pauco Comptable{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-header">
+            <h1>Pauco</h1>
+            <p class="login-subtitle">Créer un compte comptable</p>
+        </div>
+        <form method="POST" action="{{ url_for('inscription') }}">
+            <div class="form-row">
+                <div class="form-group form-half">
+                    <label for="prenom">Prénom</label>
+                    <input type="text" id="prenom" name="prenom" required placeholder="Jean">
+                </div>
+                <div class="form-group form-half">
+                    <label for="nom">Nom</label>
+                    <input type="text" id="nom" name="nom" required placeholder="Dupont">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="cabinet">Cabinet comptable</label>
+                <input type="text" id="cabinet" name="cabinet" required placeholder="Cabinet Dupont & Associés">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required placeholder="jean@cabinet.fr" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="telephone">Téléphone</label>
+                <input type="tel" id="telephone" name="telephone" placeholder="06 12 34 56 78">
+            </div>
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••" minlength="8">
+            </div>
+            <div class="form-group">
+                <label for="password_confirm">Confirmer le mot de passe</label>
+                <input type="password" id="password_confirm" name="password_confirm" required placeholder="••••••••" minlength="8">
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">S'inscrire</button>
+        </form>
+        <p class="login-footer">Déjà un compte ? <a href="{{ url_for('login') }}">Se connecter</a></p>
+    </div>
+</div>
+{% endblock %}
