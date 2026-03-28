@@ -11,16 +11,19 @@
 <div class="card-grid">
     {% for card in cards %}
     <a href="{{ url_for('restaurant_view', resto_id=card.id) }}" class="restaurant-card">
-        <h3 class="card-name">{{ card.nom }}</h3>
+        <div class="card-top">
+            <h3 class="card-name">{{ card.nom }}</h3>
+            {% if card.ville %}<span class="card-ville">{{ card.ville }}</span>{% endif %}
+        </div>
         <div class="card-metrics">
             <div class="metric">
                 <span class="metric-label">CA du mois</span>
-                <span class="metric-value">{{ "%.0f"|format(card.ca) }} €</span>
+                <span class="metric-value">{{ "{:,.0f}".format(card.ca).replace(",", " ") }} €</span>
             </div>
             <div class="metric">
                 <span class="metric-label">Résultat net</span>
                 <span class="metric-value {% if card.resultat < 0 %}text-danger{% else %}text-success{% endif %}">
-                    {{ "%.0f"|format(card.resultat) }} €
+                    {{ "{:,.0f}".format(card.resultat).replace(",", " ") }} €
                 </span>
             </div>
             <div class="metric">

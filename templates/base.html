@@ -14,8 +14,13 @@
             <a href="{{ url_for('dashboard') }}">Pauco <span class="nav-sub">Comptabilité</span></a>
         </div>
         <div class="nav-right">
-            <span class="nav-user">{{ session.get('user_name', '') }}</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-sm">Déconnexion</a>
+            <div class="nav-user-info">
+                <div class="nav-user-name">{{ session.get('user_name', '') }}</div>
+                {% if session.get('user_cabinet') %}
+                <div class="nav-user-cabinet">{{ session.get('user_cabinet') }}</div>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline">Déconnexion</a>
         </div>
     </nav>
     {% endif %}
@@ -33,6 +38,10 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <footer class="site-footer">
+        Pauco &middot; Données en lecture seule &middot; <a href="mailto:contact@paucoandco.com">contact@paucoandco.com</a>
+    </footer>
 
     {% block scripts %}{% endblock %}
 </body>

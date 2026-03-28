@@ -1,4 +1,5 @@
 import os
+import re
 import functools
 import csv
 import io
@@ -16,7 +17,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "pauco-comptable-secret-key-change-me")
+app.secret_key = os.environ["SECRET_KEY"]
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 
 # Airtable config
 AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
@@ -29,6 +34,12 @@ api = Api(AIRTABLE_TOKEN)
 
 def get_table(table_name):
     return api.table(BASE_ID, table_name)
+
+
+# ── Security helpers ────────────────────────────────────────────
+def sanitize_for_formula(value):
+    """Escape single quotes to prevent Airtable formula injection."""
+    return value.replace("'", "\\'")
 
 
 # ── Auth decorator ──────────────────────────────────────────────
@@ -45,7 +56,8 @@ def login_required(f):
 def get_restaurants_for_comptable(comptable_email):
     """Get restaurants assigned to this accountant."""
     table = get_table("Comptables")
-    records = table.all(formula=f"{{Email}} = '{comptable_email}'")
+    safe_email = sanitize_for_formula(comptable_email)
+    records = table.all(formula=f"{{Email}} = '{safe_email}'")
     if not records:
         return []
     comptable = records[0]["fields"]
@@ -68,7 +80,8 @@ def get_depenses(restaurant_id, months=1):
     """Get expenses for a restaurant over the last N months."""
     table = get_table("Dépenses")
     date_limit = (datetime.now() - timedelta(days=30 * months)).strftime("%Y-%m-%d")
-    formula = f"AND({{Restaurant}} = '{restaurant_id}', {{Date}} >= '{date_limit}')"
+    safe_id = sanitize_for_formula(restaurant_id)
+    formula = f"AND({{Restaurant}} = '{safe_id}', {{Date}} >= '{date_limit}')"
     try:
         return table.all(formula=formula)
     except Exception:
@@ -79,7 +92,8 @@ def get_revenus(restaurant_id, months=1):
     """Get revenue for a restaurant over the last N months."""
     table = get_table("Revenus")
     date_limit = (datetime.now() - timedelta(days=30 * months)).strftime("%Y-%m-%d")
-    formula = f"AND({{Restaurant}} = '{restaurant_id}', {{Date}} >= '{date_limit}')"
+    safe_id = sanitize_for_formula(restaurant_id)
+    formula = f"AND({{Restaurant}} = '{safe_id}', {{Date}} >= '{date_limit}')"
     try:
         return table.all(formula=formula)
     except Exception:
@@ -96,7 +110,6 @@ def compute_monthly_ca(revenus_records):
         if date_str:
             key = date_str[:7]  # YYYY-MM
             monthly[key] = monthly.get(key, 0) + montant
-    # Sort by month
     return dict(sorted(monthly.items()))
 
 
@@ -109,6 +122,21 @@ def compute_depenses_by_category(depenses_records):
         montant = fields.get("Montant", 0)
         categories[cat] = categories.get(cat, 0) + montant
     return dict(sorted(categories.items()))
+
+
+def get_depenses_list(depenses_records):
+    """Return flat list of expenses for table display."""
+    rows = []
+    for rec in depenses_records:
+        f = rec["fields"]
+        rows.append({
+            "date": f.get("Date", ""),
+            "categorie": f.get("Catégorie", "Autre"),
+            "description": f.get("Description", ""),
+            "montant": f.get("Montant", 0),
+        })
+    rows.sort(key=lambda x: x["date"], reverse=True)
+    return rows
 
 
 # ── Telegram ────────────────────────────────────────────────────
@@ -147,10 +175,18 @@ def inscription():
             flash("Les mots de passe ne correspondent pas.", "error")
             return render_template("inscription.html")
 
-        # Check if email already exists
+        if len(password) < 8:
+            flash("Le mot de passe doit contenir au moins 8 caractères.", "error")
+            return render_template("inscription.html")
+
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            flash("Adresse email invalide.", "error")
+            return render_template("inscription.html")
+
         table = get_table("Comptables")
         try:
-            existing = table.all(formula=f"{{Email}} = '{email}'")
+            safe_email = sanitize_for_formula(email)
+            existing = table.all(formula=f"{{Email}} = '{safe_email}'")
             if existing:
                 flash("Un compte avec cet email existe déjà.", "error")
                 return render_template("inscription.html")
@@ -158,7 +194,6 @@ def inscription():
             flash("Erreur de connexion à la base de données.", "error")
             return render_template("inscription.html")
 
-        # Create record in Airtable
         try:
             table.create({
                 "Prenom": prenom,
@@ -174,7 +209,6 @@ def inscription():
             flash("Erreur lors de la création du compte.", "error")
             return render_template("inscription.html")
 
-        # Notify Telegram
         send_telegram(f"Nouveau comptable inscrit : {prenom} {nom} — {cabinet} — {email}")
 
         flash("Votre demande est en cours de validation. Vous recevrez un email sous 24h.", "success")
@@ -202,7 +236,8 @@ def login():
 
         table = get_table("Comptables")
         try:
-            records = table.all(formula=f"{{Email}} = '{email}'")
+            safe_email = sanitize_for_formula(email)
+            records = table.all(formula=f"{{Email}} = '{safe_email}'")
         except Exception:
             flash("Erreur de connexion à la base de données.", "error")
             return render_template("login.html")
@@ -223,8 +258,10 @@ def login():
             flash("Votre compte est en attente de validation.", "error")
             return render_template("login.html")
 
+        session.permanent = True
         session["user_email"] = email
         session["user_name"] = comptable.get("Nom", email)
+        session["user_cabinet"] = comptable.get("Cabinet", "")
         return redirect(url_for("dashboard"))
 
     return render_template("login.html")
@@ -246,6 +283,7 @@ def dashboard():
         fields = resto["fields"]
         resto_id = resto["id"]
         name = fields.get("Nom", "Restaurant")
+        ville = fields.get("Ville", "")
 
         revenus = get_revenus(resto_id, months=1)
         depenses = get_depenses(resto_id, months=1)
@@ -257,6 +295,7 @@ def dashboard():
         cards.append({
             "id": resto_id,
             "nom": name,
+            "ville": ville,
             "ca": ca,
             "resultat": resultat,
             "nb_depenses": len(depenses),
@@ -268,7 +307,6 @@ def dashboard():
 @app.route("/restaurant/<resto_id>")
 @login_required
 def restaurant_view(resto_id):
-    # Verify access
     restaurants = get_restaurants_for_comptable(session["user_email"])
     resto_ids = [r["id"] for r in restaurants]
     if resto_id not in resto_ids:
@@ -285,12 +323,12 @@ def restaurant_view(resto_id):
     fields = resto["fields"]
     name = fields.get("Nom", "Restaurant")
 
-    # 12 months data
     revenus_12m = get_revenus(resto_id, months=12)
     depenses_12m = get_depenses(resto_id, months=12)
 
     monthly_ca = compute_monthly_ca(revenus_12m)
     depenses_by_cat = compute_depenses_by_category(depenses_12m)
+    depenses_table = get_depenses_list(depenses_12m)
 
     total_ca = sum(monthly_ca.values())
     total_depenses = sum(depenses_by_cat.values())
@@ -307,6 +345,7 @@ def restaurant_view(resto_id):
         resto_id=resto_id,
         monthly_ca=monthly_ca,
         depenses_by_cat=depenses_by_cat,
+        depenses_table=depenses_table,
         total_ca=total_ca,
         total_depenses=total_depenses,
         ratio_food=ratio_food,
@@ -317,7 +356,6 @@ def restaurant_view(resto_id):
 @app.route("/restaurant/<resto_id>/export")
 @login_required
 def export_csv(resto_id):
-    # Verify access
     restaurants = get_restaurants_for_comptable(session["user_email"])
     resto_ids = [r["id"] for r in restaurants]
     if resto_id not in resto_ids:

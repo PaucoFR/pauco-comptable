@@ -3,20 +3,20 @@
 
 {% block content %}
 <div class="page-header">
-    <a href="{{ url_for('dashboard') }}" class="back-link">&larr; Retour au dashboard</a>
+    <a href="{{ url_for('dashboard') }}" class="back-link">&larr; Retour</a>
     <h2>{{ name }}</h2>
-    <a href="{{ url_for('export_csv', resto_id=resto_id) }}" class="btn btn-sm">Exporter CSV</a>
+    <a href="{{ url_for('export_csv', resto_id=resto_id) }}" class="btn btn-export">Exporter CSV</a>
 </div>
 
 <!-- KPI row -->
 <div class="kpi-row">
     <div class="kpi-card">
         <span class="kpi-label">CA 12 mois</span>
-        <span class="kpi-value">{{ "%.0f"|format(total_ca) }} €</span>
+        <span class="kpi-value">{{ "{:,.0f}".format(total_ca).replace(",", " ") }} €</span>
     </div>
     <div class="kpi-card">
         <span class="kpi-label">Dépenses 12 mois</span>
-        <span class="kpi-value">{{ "%.0f"|format(total_depenses) }} €</span>
+        <span class="kpi-value">{{ "{:,.0f}".format(total_depenses).replace(",", " ") }} €</span>
     </div>
     <div class="kpi-card">
         <span class="kpi-label">Ratio food cost</span>
@@ -39,6 +39,35 @@
         <canvas id="depensesChart"></canvas>
     </div>
 </div>
+
+<!-- Expenses table -->
+{% if depenses_table %}
+<div class="table-section">
+    <h3>Détail des dépenses (12 mois)</h3>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Catégorie</th>
+                    <th>Description</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in depenses_table %}
+                <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ row.categorie }}</td>
+                    <td>{{ row.description }}</td>
+                    <td class="td-amount">{{ "{:,.0f}".format(row.montant).replace(",", " ") }} €</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -54,14 +83,19 @@
                 label: 'CA (€)',
                 data: caData,
                 backgroundColor: '#0F1F14',
-                borderRadius: 4,
+                borderRadius: 6,
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('fr-FR') + ' €' } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: v => v.toLocaleString('fr-FR') + ' €' },
+                    grid: { color: '#f0ede8' }
+                },
                 x: { grid: { display: false } }
             }
         }
@@ -78,12 +112,15 @@
             datasets: [{
                 data: catData,
                 backgroundColor: colors.slice(0, catLabels.length),
+                borderWidth: 2,
+                borderColor: '#fff',
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: '-apple-system, sans-serif' } } }
             }
         }
     });
